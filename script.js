@@ -1,25 +1,25 @@
 let countriesData;
+let localCountries = [];
 let perPage = 10;
 let where = 0;
 let Border = [];
 let switchDirection = 0;
 let direction = "asc";
-function myDisplayer(some, numPerPage = 10, wheree = 0) {
+function myDisplayer(apiData, numPerPage = 10, whichPage = 0) {
   let index = 0;
   let counter = 0;
-  let data = JSON.parse(some);
+  let data = JSON.parse(apiData);
   let pages = data.length / numPerPage;
-  let pageStr;
-  let perPageStr;
+  let myPages;
   countriesData = data;
-  where = wheree;
-  let section = wheree * numPerPage;
+  where = whichPage;
+  let section = whichPage * numPerPage;
   ///handle 20 case
   if (data.length % numPerPage !== 0) {
     pages += 1;
   }
 
-  pageStr =
+  myPages =
     '<button onclick="myDisplayer(JSON.stringify(countriesData),perPage,' +
     (where - 1) +
     ')"><<</button>';
@@ -37,23 +37,23 @@ function myDisplayer(some, numPerPage = 10, wheree = 0) {
 
   //LOOP THROUGH ARRAY & GENERATE ROWS-CELLS
 
-  for (let x in data) {
-    x = Number(x) + section;
-    if (counter < numPerPage && x !== data.length) {
-      let Capital = data[x].capital;
+  for (let country in data) {
+    country = Number(country) + section;
+    if (counter < numPerPage && country !== data.length) {
+      let Capital = data[country].capital;
       if (Capital === undefined) {
         Capital = "unKnown";
-        data[x].capital = Capital;
+        data[country].capital = Capital;
       }
 
-      myTable += `<td><input type="checkbox"/></td>`;
-      myTable += `<td>${data[x].name.common}</td>`;
-      myTable += `<td>${data[x].cca3}</td>`;
-      myTable += `<td>${data[x].population}</td>`;
+      myTable += `<td><input type="checkbox" onclick="checkBoxesvalue(${country},countriesData,localCountries)"/></td>`;
+      myTable += `<td>${data[country].name.common}</td>`;
+      myTable += `<td>${data[country].cca3}</td>`;
+      myTable += `<td>${data[country].population}</td>`;
       myTable += `<td>${Capital}</td>`;
       myTable +=
         '<td><button onclick="showBorders(countriesData[' +
-        Number(x) +
+        Number(country) +
         '])">BORDERS</button></td>';
 
       // goto next row
@@ -76,18 +76,18 @@ function myDisplayer(some, numPerPage = 10, wheree = 0) {
 
   ////pagination;
   for (let pagenum = 1; pagenum <= pages; pagenum++) {
-    pageStr +=
+    myPages +=
       '<button onclick="myDisplayer(JSON.stringify(countriesData),perPage,' +
       (pagenum - 1) +
       ')">' +
       pagenum +
       "</button>";
   }
-  pageStr +=
+  myPages +=
     '<button onclick="myDisplayer(JSON.stringify(countriesData),perPage,' +
     (where + 1) +
     ')">>></button>';
-  document.getElementById("pages").innerHTML = pageStr;
+  document.getElementById("pages").innerHTML = myPages;
 
   // add pagination buttons and set the click action for them
   document.getElementById("perPage").innerHTML =
@@ -95,6 +95,21 @@ function myDisplayer(some, numPerPage = 10, wheree = 0) {
   <button onclick="pagination(10, countriesData)">10</button>\n\
   <button onclick="pagination(20, countriesData)">20</button>\n\
   <button onclick="pagination(50, countriesData)">50</button>';
+}
+function checkBoxesvalue(country, countries, local) {
+  let table = document.getElementById("myTab");
+  let tr = table.getElementsByTagName("tr");
+  let td1 = tr[country - perPage * where + 1].getElementsByTagName("td")[0];
+  let ch = td1.getElementsByTagName("input")[0];
+  if (ch.checked === true) {
+    local.push(countries[country]);
+    ch.checked = true;
+  } else {
+    local.pop();
+    ch.checked = false;
+  }
+  console.log(local.length);
+  localStorage.setItem("countries", JSON.stringify(local));
 }
 
 //to choose #of countries per page
@@ -104,22 +119,21 @@ function pagination(num, arr) {
   myDisplayer(JSON.stringify(arr), perPage, where);
 }
 
-function getFile(myCallback) {
-  let req = new XMLHttpRequest();
-  req.open("GET", "https://restcountries.com/v3.1/all");
-  req.onload = function () {
-    if (req.status == 200) {
-      myCallback(this.responseText);
-    } else {
-      myCallback("Error: " + req.status);
-    }
-  };
-  req.send();
+//read api(json)
+async function getText(callBack) {
+  try {
+    let myObject = await fetch("https://restcountries.com/v3.1/all");
+    let myText = await myObject.text();
+    callBack(myText);
+  } catch {
+    callBack(localStorage.getItem("countries"));
+  }
 }
+//function call
+getText(myDisplayer);
 
-getFile(myDisplayer);
-
-function sortTable(columnNum, arr) {
+//sort by headings
+function sortTable(columnNum, array) {
   let jsonn;
   if (switchDirection % 2 === 0) {
     direction = "asc";
@@ -144,7 +158,7 @@ function sortTable(columnNum, arr) {
           return 0;
         });
       } else {
-        arr.sort((a, b) => {
+        array.sort((a, b) => {
           let fa = a.name.common;
           let fb = b.name.common;
 
@@ -156,13 +170,12 @@ function sortTable(columnNum, arr) {
           }
           return 0;
         });
-        // arr.reverse();
       }
       break;
 
     case 3:
       if (direction === "asc") {
-        arr.sort((a, b) => {
+        array.sort((a, b) => {
           let fa = a.cca3;
           let fb = b.cca3;
 
@@ -175,7 +188,7 @@ function sortTable(columnNum, arr) {
           return 0;
         });
       } else {
-        arr.sort((a, b) => {
+        array.sort((a, b) => {
           let fa = a.cca3;
           let fb = b.cca3;
 
@@ -187,25 +200,23 @@ function sortTable(columnNum, arr) {
           }
           return 0;
         });
-        // arr.reverse();
       }
       break;
 
     case 4:
       if (direction === "asc") {
-        arr.sort((a, b) => {
+        array.sort((a, b) => {
           return a.population - b.population;
         });
       } else {
-        arr.sort((a, b) => {
+        array.sort((a, b) => {
           return b.population - a.population;
         });
-        // arr.reverse();
       }
       break;
     case 5:
       if (direction === "asc") {
-        arr.sort((a, b) => {
+        array.sort((a, b) => {
           let fa = a.capital;
           let fb = b.capital;
 
@@ -218,7 +229,7 @@ function sortTable(columnNum, arr) {
           return 0;
         });
       } else {
-        arr.sort((a, b) => {
+        array.sort((a, b) => {
           let fa = a.capital;
           let fb = b.capital;
 
@@ -230,7 +241,6 @@ function sortTable(columnNum, arr) {
           }
           return 0;
         });
-        // arr.reverse();
       }
       break;
 
@@ -238,7 +248,7 @@ function sortTable(columnNum, arr) {
       break;
   }
 
-  jsonn = JSON.stringify(arr);
+  jsonn = JSON.stringify(array);
   myDisplayer(jsonn, perPage, where);
 }
 
@@ -247,14 +257,14 @@ function sortTable(columnNum, arr) {
 //filtering
 
 function filtering() {
-  let input, filter, table, tr, td, i, txtValue;
+  let input, filter, table, tr, td, txtValue;
   input = document.getElementById("myInput");
   filter = input.value.toLowerCase();
   table = document.getElementById("myTab");
   tr = table.getElementsByTagName("tr");
 
   // Loop through all table rows and coloumns to filter data
-  for (i = 0; i < tr.length; i++) {
+  for (let i = 0; i < tr.length; i++) {
     td1 = tr[i].getElementsByTagName("td")[1];
     td2 = tr[i].getElementsByTagName("td")[2];
     td3 = tr[i].getElementsByTagName("td")[3];
@@ -284,18 +294,6 @@ function showBorders(states) {
   if (states.borders === undefined) {
     alert("NO borders found");
   } else {
-    
     alert("Borders are : " + states.borders);
   }
 }
-
-// function searchBordersStates(border){
-//   let str="";
-//   for (let i ; i<border.length;i++){
-//     let index =array.indexOf(border.borders[i]);
-//     console.log(index+"=");
-//     str+=border[index].name.common;
-//     console.log(str+"+");
-//   }
-//   return str;
-// }
