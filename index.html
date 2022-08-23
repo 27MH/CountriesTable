@@ -12,7 +12,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
     />
     <title>Contries List</title>
-    <link rel="icon" href="icon.png"/>
+    <link rel="icon" href="icon.png" />
   </head>
 
   <body>
@@ -21,7 +21,6 @@
     </header>
 
     <main>
-      <!-- (A) ALL WE NEED IS A <DIV> CONTAINER -->
       <div class="top">
         <fieldset>
           Filter: <input type="text" id="myInput" onkeyup="filtering()" />
@@ -34,6 +33,11 @@
       <div id="container"></div>
 
       <div id="pages"></div>
+
+      <dialog class="dialog">
+        <button class="close" type="reset">X</button>
+        <p id="result"></p>
+      </dialog>
     </main>
 
     <footer>

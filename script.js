@@ -1,60 +1,58 @@
 let countriesData;
+let originalCountriesData;
 let localCountries = [];
 let perPage = 10;
-let where = 0;
+let whichPage = 0;
 let Border = [];
 let switchDirection = 0;
 let direction = "asc";
-function myDisplayer(apiData, numPerPage = 10, whichPage = 0) {
+
+function myDisplayer(apiData, numPerPage = 10, currentPage = 0) {
   let index = 0;
   let counter = 0;
-  let data = JSON.parse(apiData);
+  let data = apiData;
   let pages = data.length / numPerPage;
   let myPages;
-  countriesData = data;
-  where = whichPage;
-  let section = whichPage * numPerPage;
+  let section = currentPage * numPerPage;
+
+  countriesData = apiData;
+  whichPage = currentPage;
   ///handle 20 case
   if (data.length % numPerPage !== 0) {
     pages += 1;
   }
 
   myPages =
-    '<button onclick="myDisplayer(JSON.stringify(countriesData),perPage,' +
-    (where - 1) +
+    '<button onclick="myDisplayer(countriesData,perPage,' +
+    (whichPage - 1) +
     ')"><<</button>';
 
-  let myTable =
-    '<table class="tab" id="myTab"> \n\
-                                <tr>\n\
-                                <th><p>Save to <br> local Storage</p></th>\n\
-                                <th onclick="sortTable(2,countriesData)">Name</th>\n\
-                                <th onclick="sortTable(3,countriesData)">alpha3Code</th>\n\
-                                <th onclick="sortTable(4,countriesData)">population</th>\n\
-                                <th onclick="sortTable(5,countriesData)">Capital</th>\n\
-                                <th>Show Borders</th>\n\
-                                </tr><tr>';
+  let myTable = `<table class="tab" id="myTab"> \n\
+    <tr>\n\
+    <th><p>Save to <br> local Storage</p></th>\n\
+    <th onclick="sortTable('name')">Name</th>\n\
+    <th onclick="sortTable('cca3')">alpha3Code</th>\n\
+    <th onclick="sortTable('population')">population</th>\n\
+    <th onclick="sortTable('capital')">Capital</th>\n\
+    <th>Show Borders</th>\n\
+    </tr><tr>`;
 
   //LOOP THROUGH ARRAY & GENERATE ROWS-CELLS
 
-  for (let country in data) {
+  for (let country in countriesData) {
     country = Number(country) + section;
     if (counter < numPerPage && country !== data.length) {
-      let Capital = data[country].capital;
-      if (Capital === undefined) {
-        Capital = "unKnown";
-        data[country].capital = Capital;
-      }
-
       myTable += `<td><input type="checkbox" onclick="checkBoxesvalue(${country},countriesData,localCountries)"/></td>`;
-      myTable += `<td>${data[country].name.common}</td>`;
-      myTable += `<td>${data[country].cca3}</td>`;
-      myTable += `<td>${data[country].population}</td>`;
-      myTable += `<td>${Capital}</td>`;
+      myTable += `<td>${countriesData[country].name}</td>`;
+      myTable += `<td>${countriesData[country].cca3}</td>`;
+      myTable += `<td>${countriesData[country].population}</td>`;
+      myTable += `<td>${countriesData[country].capital}</td>`;
       myTable +=
-        '<td><button onclick="showBorders(countriesData[' +
+        '<td><button class="open" onclick="showBorders(countriesData[' +
         Number(country) +
-        '])">BORDERS</button></td>';
+        "]," +
+        country +
+        ')">BORDERS</button></td>';
 
       // goto next row
       let next = index + 1;
@@ -77,15 +75,15 @@ function myDisplayer(apiData, numPerPage = 10, whichPage = 0) {
   ////pagination;
   for (let pagenum = 1; pagenum <= pages; pagenum++) {
     myPages +=
-      '<button onclick="myDisplayer(JSON.stringify(countriesData),perPage,' +
+      '<button onclick="myDisplayer(countriesData,perPage,' +
       (pagenum - 1) +
       ')">' +
       pagenum +
       "</button>";
   }
   myPages +=
-    '<button onclick="myDisplayer(JSON.stringify(countriesData),perPage,' +
-    (where + 1) +
+    '<button onclick="myDisplayer(countriesData,perPage,' +
+    (whichPage + 1) +
     ')">>></button>';
   document.getElementById("pages").innerHTML = myPages;
 
@@ -96,10 +94,11 @@ function myDisplayer(apiData, numPerPage = 10, whichPage = 0) {
   <button onclick="pagination(20, countriesData)">20</button>\n\
   <button onclick="pagination(50, countriesData)">50</button>';
 }
+
 function checkBoxesvalue(country, countries, local) {
   let table = document.getElementById("myTab");
   let tr = table.getElementsByTagName("tr");
-  let td1 = tr[country - perPage * where + 1].getElementsByTagName("td")[0];
+  let td1 = tr[country - perPage * whichPage + 1].getElementsByTagName("td")[0];
   let ch = td1.getElementsByTagName("input")[0];
   if (ch.checked === true) {
     local.push(countries[country]);
@@ -108,15 +107,14 @@ function checkBoxesvalue(country, countries, local) {
     local.pop();
     ch.checked = false;
   }
-  console.log(local.length);
   localStorage.setItem("countries", JSON.stringify(local));
 }
 
 //to choose #of countries per page
-function pagination(num, arr) {
-  where = 0;
+function pagination(num, countriesArr) {
+  whichPage = 0;
   perPage = num;
-  myDisplayer(JSON.stringify(arr), perPage, where);
+  myDisplayer(countriesArr, perPage, whichPage);
 }
 
 //read api(json)
@@ -124,17 +122,24 @@ async function getText(callBack) {
   try {
     let myObject = await fetch("https://restcountries.com/v3.1/all");
     let myText = await myObject.text();
-    callBack(myText);
-  } catch {
-    callBack(localStorage.getItem("countries"));
+    let data = JSON.parse(myText);
+    data = data.map((country) => ({
+      name: country.name.common,
+      capital: country.capital ? country.capital[0] : "",
+      cca3: country.cca3,
+      population: country.population,
+      borders: country.borders ? country.borders : [],
+    }));
+    originalCountriesData = data;
+    callBack(data);
+  } catch (error) {
+    callBack(JSON.parse(localStorage.getItem("countries")));
   }
 }
-//function call
-getText(myDisplayer);
 
 //sort by headings
-function sortTable(columnNum, array) {
-  let jsonn;
+function sortTable(property) {
+  let sortedData;
   if (switchDirection % 2 === 0) {
     direction = "asc";
     switchDirection++;
@@ -142,158 +147,50 @@ function sortTable(columnNum, array) {
     direction = "desc";
     switchDirection++;
   }
-  switch (columnNum) {
-    case 2:
-      if (direction === "asc") {
-        arr.sort((a, b) => {
-          let fa = a.name.common;
-          let fb = b.name.common;
-
-          if (fa < fb) {
-            return -1;
-          }
-          if (fa > fb) {
-            return 1;
-          }
-          return 0;
-        });
-      } else {
-        array.sort((a, b) => {
-          let fa = a.name.common;
-          let fb = b.name.common;
-
-          if (fa < fb) {
-            return 1;
-          }
-          if (fa > fb) {
-            return -1;
-          }
-          return 0;
-        });
-      }
-      break;
-
-    case 3:
-      if (direction === "asc") {
-        array.sort((a, b) => {
-          let fa = a.cca3;
-          let fb = b.cca3;
-
-          if (fa < fb) {
-            return -1;
-          }
-          if (fa > fb) {
-            return 1;
-          }
-          return 0;
-        });
-      } else {
-        array.sort((a, b) => {
-          let fa = a.cca3;
-          let fb = b.cca3;
-
-          if (fa < fb) {
-            return 1;
-          }
-          if (fa > fb) {
-            return -1;
-          }
-          return 0;
-        });
-      }
-      break;
-
-    case 4:
-      if (direction === "asc") {
-        array.sort((a, b) => {
-          return a.population - b.population;
-        });
-      } else {
-        array.sort((a, b) => {
-          return b.population - a.population;
-        });
-      }
-      break;
-    case 5:
-      if (direction === "asc") {
-        array.sort((a, b) => {
-          let fa = a.capital;
-          let fb = b.capital;
-
-          if (fa < fb) {
-            return -1;
-          }
-          if (fa > fb) {
-            return 1;
-          }
-          return 0;
-        });
-      } else {
-        array.sort((a, b) => {
-          let fa = a.capital;
-          let fb = b.capital;
-
-          if (fa < fb) {
-            return 1;
-          }
-          if (fa > fb) {
-            return -1;
-          }
-          return 0;
-        });
-      }
-      break;
-
-    default:
-      break;
-  }
-
-  jsonn = JSON.stringify(array);
-  myDisplayer(jsonn, perPage, where);
+  sortedData = countriesData.sort((a, b) => compare(a, b, property, direction));
+  myDisplayer(sortedData, perPage, whichPage);
 }
 
-///////////////////
+function compare(a, b, property, direction) {
+  if (direction === "asc") {
+    return a[property] > b[property] ? 1 : -1;
+  } else if (direction === "desc") {
+    return a[property] < b[property] ? 1 : -1;
+  }
+}
 
 //filtering
 
 function filtering() {
-  let input, filter, table, tr, td, txtValue;
+  let input, filter;
   input = document.getElementById("myInput");
   filter = input.value.toLowerCase();
-  table = document.getElementById("myTab");
-  tr = table.getElementsByTagName("tr");
-
-  // Loop through all table rows and coloumns to filter data
-  for (let i = 0; i < tr.length; i++) {
-    td1 = tr[i].getElementsByTagName("td")[1];
-    td2 = tr[i].getElementsByTagName("td")[2];
-    td3 = tr[i].getElementsByTagName("td")[3];
-    td4 = tr[i].getElementsByTagName("td")[4];
-
-    if (td1 || td2 || td3 || td4) {
-      txtValue1 = td1.innerText;
-      txtValue2 = td2.innerText;
-      txtValue3 = td3.innerText;
-      txtValue4 = td4.innerText;
-      if (
-        txtValue1.toLowerCase().indexOf(filter) > -1 ||
-        txtValue2.toLowerCase().indexOf(filter) > -1 ||
-        txtValue3.toLowerCase().indexOf(filter) > -1 ||
-        txtValue4.toLowerCase().indexOf(filter) > -1
-      ) {
-        tr[i].style.display = "";
-      } else {
-        tr[i].style.display = "none";
-      }
-    }
-  }
+  let filteredArr = originalCountriesData.filter(
+    (object) =>
+      object.name.toLowerCase().includes(filter) ||
+      object.cca3.toLowerCase().includes(filter) ||
+      object.population.toString().includes(filter) ||
+      object.capital.toLowerCase().includes(filter)
+  );
+  myDisplayer(filteredArr);
 }
 
 //borders
-function showBorders(states) {
+function showBorders(states, country) {
+  let result = "";
   if (states.borders === undefined) {
-    alert("NO borders found");
+    result = "No Borders Found";
   } else {
-    alert("Borders are : " + states.borders);
+    result = "Borders are :<br>  " + states.borders;
   }
+  let dialog = document.querySelector(".dialog");
+  let closeButton = document.querySelector(".close");
+  document.getElementById("result").innerHTML = result;
+  dialog.show();
+  closeButton.addEventListener("click", () => {
+    dialog.close();
+  });
 }
+
+//function call
+getText(myDisplayer);
